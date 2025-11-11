@@ -278,7 +278,9 @@ def load_model_resources():
     num_classes = len(label_encoder.classes_)
     
     model = AccentClassifier(input_dim, 512, num_classes)
-    model.load_state_dict(torch.load('accent_model.pt', map_location='cpu'))
+    
+    # ⚠️ FIX: Add weights_only=False for PyTorch 2.6+
+    model.load_state_dict(torch.load('accent_model.pt', map_location='cpu', weights_only=False))
     model.eval()
     
     feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained("facebook/hubert-base-ls960")
@@ -286,8 +288,6 @@ def load_model_resources():
     hubert.eval()
     
     return model, scaler, label_encoder, max_mfcc_len, feature_extractor, hubert
-
-model, scaler, label_encoder, max_mfcc_len, feature_extractor, hubert = load_model_resources()
 
 # ============= CUISINE MAPPING =============
 region_cuisine_map = {

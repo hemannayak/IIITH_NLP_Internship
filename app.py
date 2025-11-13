@@ -1,4 +1,4 @@
-
+streamlit_app_code = '''
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -24,7 +24,7 @@ st.set_page_config(
 # ============= CUSTOM CSS =============
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapies.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
 * {
     font-family: 'Poppins', sans-serif;
@@ -258,7 +258,7 @@ class AccentClassifier(nn.Module):
         self.bn3 = nn.BatchNorm1d(hidden_dim // 4)
         self.fc4 = nn.Linear(hidden_dim // 4, num_classes)
         self.dropout = nn.Dropout(dropout)
-    
+
     def forward(self, x):
         x = F.relu(self.bn1(self.fc1(x)))
         x = self.dropout(x)
@@ -276,18 +276,18 @@ def load_model_resources():
     max_mfcc_len = scaler.max_mfcc_len
     input_dim = scaler.n_features_in_
     num_classes = len(label_encoder.classes_)
-    
+
     model = AccentClassifier(input_dim, 512, num_classes)
-    
-    # ⚠️ FIX: Add weights_only=False for PyTorch 2.6+
-    model.load_state_dict(torch.load('accent_model.pt', map_location='cpu', weights_only=False))
+    model.load_state_dict(torch.load('accent_model.pt', map_location='cpu'))
     model.eval()
-    
+
     feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained("facebook/hubert-base-ls960")
     hubert = HubertModel.from_pretrained("facebook/hubert-base-ls960")
     hubert.eval()
-    
+
     return model, scaler, label_encoder, max_mfcc_len, feature_extractor, hubert
+
+model, scaler, label_encoder, max_mfcc_len, feature_extractor, hubert = load_model_resources()
 
 # ============= CUISINE MAPPING =============
 region_cuisine_map = {
@@ -359,26 +359,26 @@ def extract_hubert(wav, sr):
         embedding = outputs.hidden_states[9].squeeze(0).mean(dim=0).numpy()
     return embedding
 
-def predict_accent(audio_data, sr):
+def predict_accent(audio_data, sr, max_mfcc_length):
     if len(audio_data.shape) > 1:
         audio_data = audio_data.mean(axis=0)
     if sr != 16000:
         audio_data = librosa.resample(audio_data, orig_sr=sr, target_sr=16000)
-    
-    mfcc = extract_mfcc(audio_data, 16000, max_len=max_mfcc_len)
+
+    mfcc = extract_mfcc(audio_data, 16000, max_len=max_mfcc_length)
     hubert_emb = extract_hubert(audio_data, 16000)
     combined = np.concatenate([mfcc.flatten(), hubert_emb])
     features_scaled = scaler.transform(combined.reshape(1, -1))
-    
+
     with torch.no_grad():
         outputs = model(torch.tensor(features_scaled, dtype=torch.float32))
         probs = F.softmax(outputs, dim=1)
         pred_idx = torch.argmax(probs, dim=1).item()
         confidence = probs[0, pred_idx].item()
-        
+
         # Get all probabilities
         all_probs = {label_encoder.classes_[i]: probs[0, i].item() for i in range(len(label_encoder.classes_))}
-    
+
     predicted_label = label_encoder.inverse_transform([pred_idx])[0]
     return predicted_label, confidence, all_probs
 
@@ -414,7 +414,7 @@ else:
 if audio_data is not None:
     with st.spinner("🔍 Analyzing your accent with Deep Learning..."):
         try:
-            pred_label, confidence, all_probs = predict_accent(audio_data, sr)
+            pred_label, confidence, all_probs = predict_accent(audio_data, sr, max_mfcc_len)
             info = region_cuisine_map.get(pred_label, {
                 'region': 'India 🇮🇳',
                 'state': 'General',
@@ -422,7 +422,7 @@ if audio_data is not None:
                 'icon': '🇮🇳',
                 'description': 'Diverse Indian cuisine'
             })
-            
+
             # Result Box
             st.markdown(f"""
             <div class='result-box'>
@@ -440,23 +440,23 @@ if audio_data is not None:
                 </p>
             </div>
             """, unsafe_allow_html=True)
-            
+
             # Cuisine Recommendations
             st.markdown('<div class="glass-card">', unsafe_allow_html=True)
             st.markdown("### 🍽️ Personalized Cuisine Recommendations")
             st.markdown(f"*{info['description']}*")
             st.markdown('</div>', unsafe_allow_html=True)
-            
+
             cols = st.columns(len(info['cuisines']))
             for col, dish in zip(cols, info['cuisines']):
                 col.markdown(f"<div class='cuisine-card'><strong>{dish}</strong></div>", unsafe_allow_html=True)
-            
+
             # Detailed Probabilities
             with st.expander("📊 View Detailed Prediction Probabilities"):
                 sorted_probs = sorted(all_probs.items(), key=lambda x: x[1], reverse=True)
                 for lang, prob in sorted_probs:
                     st.progress(prob, text=f"{lang}: {prob*100:.2f}%")
-        
+
         except Exception as e:
             st.error(f"❌ Error processing audio: {str(e)}")
 
@@ -483,7 +483,7 @@ st.markdown("""
         </div>
     </div>
     <p style="margin-top: 2rem; text-align: center; opacity: 0.9;">
-        This system uses state-of-the-art self-supervised learning (HuBERT) combined with traditional 
+        This system uses state-of-the-art self-supervised learning (HuBERT) combined with traditional
         acoustic features (MFCC) to identify native language from English speech patterns.
     </p>
 </div>
@@ -506,3 +506,22 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
+'''
+
+# Save Streamlit app
+with open('app.py', 'w', encoding='utf-8') as f:
+    f.write(streamlit_app_code)
+
+print("="*70)
+print("✅ STREAMLIT APP CREATED")
+print("="*70)
+print("\n📁 File: app.py")
+print("\n✨ Features:")
+print("  ✓ Live audio recording")
+print("  ✓ File upload support")
+print("  ✓ Real-time accent detection")
+print("  ✓ Cuisine recommendations")
+print("  ✓ Cross-age generalization")
+print("  ✓ Professional UI/UX")
+print("  ✓ Detailed probabilities")
+print("\n" + "="*70)

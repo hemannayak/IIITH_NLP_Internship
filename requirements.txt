@@ -1,8 +1,7 @@
-
 torch
 torchvision
 torchaudio
-transformers
+transformers==4.57.1
 datasets
 soundfile
 librosa
